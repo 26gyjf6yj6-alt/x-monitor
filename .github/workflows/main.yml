@@ -1,0 +1,41 @@
+name: x-monitor
+
+on:
+  schedule:
+    # 每 30 分钟跑一次。注意：GitHub 免费额度只有公开仓库才无限分钟；
+    # 如果你用私有仓库，请把 */5 改成 */30（否则每月配额很快用完）
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: x-monitor
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Run monitor
+        env:
+          TWITTER_SCREEN_NAME: WallStreet0Name
+          WXPUSHER_APP_TOKEN: ${{ secrets.WXPUSHER_APP_TOKEN }}
+          WXPUSHER_UID: ${{ secrets.WXPUSHER_UID }}
+        run: python monitor.py
+
+      - name: Commit state
+        run: |
+          git config user.name "x-monitor-bot"
+          git config user.email "x-monitor-bot@users.noreply.github.com"
+          git add state.json last_run.txt
+          git diff --cached --quiet || git commit -m "chore: update monitor state"
+          git push
